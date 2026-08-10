@@ -15,6 +15,7 @@ REQUIRED = {
     "paper/title.tex",
     "docs/PAPER_STYLE_GUIDE.md",
     "docs/AI_HANDOFF_PROMPT.md",
+    "scripts/export_handoff.py",
     "modules/20_q1/paper/q1_algorithm.tex",
 }
 for m in CFG["modules"]:

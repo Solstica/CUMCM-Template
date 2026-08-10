@@ -1,6 +1,6 @@
 # AI 单文件交接说明与规范提示词
 
-> 这份文件可以**单独发给任何队友的 AI**。即使该 AI 没有自动读取仓库根目录规则，只要完整阅读本文件，也应能够找到资源、检查实时待办、遵守分支边界并沿用统一论文格式。
+> 这份文件可以单独发给任何队友的 AI。更推荐直接运行 `python scripts/export_handoff.py <module-key>`，让脚本自动把当前真源、实时待办、当前 registry、只读参考和历史材料分层打包。
 
 ## A. 这个仓库怎么理解
 
@@ -13,6 +13,8 @@
 - 正式数值必须可追溯到当前代码/结果文件；
 - 全文只在临时 preview 中合并，不靠长期“总稿分支”日常开发；
 - `main` 只保存稳定版本。
+
+任何导出的 AI handoff 都只是当前仓库状态的携带快照，不是新的真源。
 
 ## B. 永久固定的资源路径
 
@@ -33,27 +35,29 @@
 | 跨问共享代码 | `shared` | `shared/` | `feature/shared` |
 | 全文格式/标题/目录/页码 | `paper-shell` | `paper/` | `feature/paper-shell` |
 
-其他固定位置：
+问题模块固定位置：
 
 ```text
-data/raw/                  官方原始附件，原则上不改写
-data/external/             外部补充数据及来源
-modules/<q>/code/          单问代码
-modules/<q>/data/processed/单问派生数据
-modules/<q>/figures/       正文引用图
-modules/<q>/figures/editable/ Origin/Excel/AGX等可编辑图源
-modules/<q>/tables/        精确结果表
-modules/<q>/results/registry.csv 结果状态登记
-work/tasks/<key>.md        当前模块实时待办
-work/archive/              废弃模型/旧图/旧路线
-output/final/              正式交付物
+data/raw/                       官方原始附件，原则上不改写
+data/external/                  外部补充数据及来源
+modules/<q>/paper/              单问正文
+modules/<q>/code/               单问代码
+modules/<q>/data/processed/     单问派生数据
+modules/<q>/figures/            正文引用图
+modules/<q>/figures/editable/   Origin/Excel/AGX等可编辑图源
+modules/<q>/tables/             精确结果表
+modules/<q>/results/registry.csv 当前结果状态登记
+work/tasks/<key>.md             当前模块实时待办
+work/archive/                   旧模型/旧图/旧路线，只读
+output/final/                   正式交付物
+output/handoff/                 临时 AI 交接包，不是仓库真源
 ```
 
-遇到“文件在哪里”时，**先查本表、`docs/RESOURCE_MAP.md`、`config/project.json` 和模块目录，不要要求队友重新提供这些固定路径。**
+不要自行创造 `modules/<q>/src/`、`final2/`、第二套模块树或第二套全文 TeX。
 
-## C. 开工前强制动作
+## C. 开工前强制动作（有仓库执行权限的 AI）
 
-假设本次模块是 `q2`，必须先运行：
+假设本次模块是 `q2`：
 
 ```bash
 git status
@@ -62,43 +66,69 @@ git pull --ff-only
 python scripts/workflow.py start q2
 ```
 
-`workflow.py start` 会打印：
+`workflow.py start` 会打印当前模块、期望分支、允许修改路径、任务文件、实时待办和 Git 状态。当前分支与期望分支不一致时先停止修改。
 
-- 当前模块；
-- 期望分支；
-- 当前分支；
-- 允许修改路径；
-- 任务文件路径；
-- 实时待办；
-- 当前 Git 状态。
+## D. 普通聊天 AI 与仓库代理必须区分
 
-如果当前分支与期望分支不一致，先停止修改。
+普通 ChatGPT、DeepSeek 等如果只收到文件、没有仓库执行权限：
 
-## D. 实时待办必须同步
+- 不得声称已经运行 Git/Python/LaTeX；
+- 不得声称已经真正修改仓库；
+- 应返回准确的仓库相对路径、完整替换文本/修改建议、需要复核项；
+- 由协作者把结果落回正式仓库。
 
-每个模块的任务文件：
+给普通聊天 AI 最稳妥的方式不是手工拼文件，而是：
+
+```bash
+python scripts/export_handoff.py q2 --format md
+python scripts/export_handoff.py q2 --format zip
+```
+
+需要带当前只读参考：
+
+```bash
+python scripts/export_handoff.py q2 --reference shared/code
+```
+
+需要带历史迁移材料：
+
+```bash
+python scripts/export_handoff.py q2 --legacy work/archive/imports/<snapshot>
+```
+
+导出器会生成 `HANDOFF_MANIFEST`，显式写明当前 canonical root、当前 registry 行数与状态、允许写入路径、只读参考和 legacy 路径。
+
+## E. 当前真源与历史材料必须隔离
+
+- `canonical_root` / 当前模块目录才是正式真源。
+- `work/archive/`、导入快照和 `legacy_paths` 全部是只读历史资料。
+- 历史文件即使更完整、更新日期更晚、旧 registry 写过 `FROZEN` 或 `CHECKED`，也不能自动变成当前状态。
+- **当前结果状态只认当前模块自己的 `results/registry.csv`。**
+- 历史 `FROZEN` 不具有跨仓库、跨快照继承效力。
+- 历史资料冲突时标记 `NEEDS_REVIEW`，不得凭“看起来更新”自行定版。
+- 正式正文不得长期引用 `work/archive/...` 中的图、表、代码和结果；经确认可复用的内容必须迁移到当前模块固定路径。
+
+`export_handoff.py` 默认不向普通 AI 原样嵌入历史 registry，而只生成去身份化的历史冲突摘要；只有专门做历史审计时才使用 `--include-legacy-registries`。
+
+## F. 实时待办必须同步
+
+每个模块任务文件：
 
 ```text
 work/tasks/<key>.md
 ```
 
-工作过程中发现以下任何内容，都必须实时写回任务文件，而不是只留在聊天里：
+工作过程中发现新任务、尚未完成的图/表/代码、阻塞、需要复核的参数/引用/结论、已完成事项，都必须实时写回任务文件，不只留在聊天里。
 
-- 新任务；
-- 尚未完成的图/表/代码；
-- 数据或模型阻塞；
-- 需要复核的参数、引用、结论；
-- 已完成事项。
-
-需要人工判断时统一写：
+需要人工判断统一写：
 
 ```text
 NEEDS_REVIEW / 需要复核
 ```
 
-复核可由管理员或指定复核成员完成，不指定必须由某一个固定角色确认。
+未验证结果不要先写进正式正文，也不要自行发明 `\TODO{}`、`\placeholder{}` 等模板未定义宏来绕过任务管理。
 
-## E. 责任域
+## G. 责任域
 
 当前模块只修改：
 
@@ -107,28 +137,26 @@ NEEDS_REVIEW / 需要复核
 work/tasks/<key>.md
 ```
 
-例如 `q2` 只修改：
+例如 `q2`：
 
 ```text
 modules/30_q2/**
 work/tasks/q2.md
 ```
 
-不要因为“方便”顺手改 Q1、摘要或全文导言区。发现跨模块问题时，在当前任务文件记录依赖，并说明需要哪个模块处理。
-
-绝对禁止：
+跨模块问题只记录依赖，不直接覆盖其他章节。禁止：
 
 ```text
 git push --force
 git reset --hard
 新建第二套全文 document.tex / final.tex
 新建 final2 / 真的final / 论文汇总 等并行真源
-从旧稿、截图或范文手抄关键结果覆盖当前结果
+从旧稿、截图、范文或历史 JSON/registry 手抄关键结果覆盖当前结果
 ```
 
-## F. 正式结果状态
+## H. 正式结果状态
 
-问题模块的 `results/registry.csv` 使用：
+问题模块 `results/registry.csv` 使用：
 
 ```text
 DRAFT       正在计算或尚未验证
@@ -143,7 +171,7 @@ NEEDS_REVIEW
 CHECKED
 ```
 
-正文关键数值应来自：
+正文关键数值只使用当前项目：
 
 ```text
 FROZEN + CHECKED
@@ -151,30 +179,30 @@ FROZEN + CHECKED
 
 模型/代码改变且影响结果后，相关结果重新回到 `DRAFT`。
 
-## G. 论文格式不要重新设计
+## I. 论文格式不要重新设计
 
-完整规范见 `docs/PAPER_STYLE_GUIDE.md`。最重要的固定口径如下：
+完整规范见 `docs/PAPER_STYLE_GUIDE.md`。核心固定口径：
 
 - A4，四边 `25 mm`；
 - 中文正文 Windows 优先宋体，英文/数字优先 Times New Roman；
 - 正文小四，段首缩进2字符，行距基准1.38；
-- 论文题目三号加粗居中；
+- 题目三号加粗居中；
 - 一级标题中文序号且居中，二级 `4.1`，三级 `4.1.1`；
 - 目录显示到二级标题；
 - 正文从问题重述重新计第1页；
 - 参考文献、附录、AI使用报告分别另起一页；
 - 三线表，浅蓝表头，不画纵线；
-- 单个小图 `0.44\textwidth`；两个小图总宽 `0.88\textwidth`；Origin合成双面板图整张 `0.88\textwidth`；总体流程图约 `1.0\textwidth`；机理图通常 `0.70\textwidth`；
-- 图题、表题由LaTeX生成，不把大标题做进图片；
-- 伪代码统一使用 `algorithm2e`，表达算法机制，不复制Python；
+- 单个小图 `0.44\textwidth`；两个小图总宽 `0.88\textwidth`；Origin 合成双面板整张 `0.88\textwidth`；总体流程图约 `1.0\textwidth`；机理图通常 `0.70\textwidth`；
+- 图题、表题由 LaTeX 生成，不把大标题做进图片；
+- 伪代码统一使用 `algorithm2e`；
 - 普通公式尽量行内，核心模型/约束/结果才单独编号；
 - 不在章节文件里重定义字体、页边距、标题格式。
 
-若任务只是写 Q2，而你认为字体不合适：**不要直接改字体**，记录为 `paper-shell` 需要处理的事项。
+非 `paper-shell` 任务发现公共排版问题，只记录依赖。
 
-## H. 推荐的单问写作结构
+## J. 推荐的单问写作结构
 
-根据题意选用，不机械堆标题：
+按题意选用，不机械堆标题：
 
 ```text
 问题描述与分析
@@ -187,22 +215,20 @@ FROZEN + CHECKED
 → 对主要不确定性的检验
 ```
 
-优化问题必须明确：决策变量、目标函数、约束、模型汇总。
+优化问题必须明确决策变量、目标函数、约束、模型汇总。
 
-摘要按“任务--准备--模型--算法--结果--解释”组织每问，再压缩为约4--6行。
+## K. 图表规则
 
-## I. 图表规则
-
-每张正式图都必须能回答：
+每张正式图必须能回答：
 
 1. 数据来自哪里？
 2. 对应哪个当前代码/表格？
 3. 可编辑图源在哪里？
 4. 正文用它说明什么？
 
-可编辑图源统一放 `figures/editable/`。如果用 Origin 完成最终图，不要为了省事再用 Python 粗糙重画替代正式图；Python 可以用于产生数据和预览。
+可编辑图源统一放 `figures/editable/`。历史图在未确认生成链前只能作为迁移候选，不得因为“看起来对应”就直接视为当前正式图。
 
-## J. 结束本轮前强制动作
+## L. 结束本轮前强制动作（有仓库执行权限）
 
 ```bash
 python scripts/workflow.py finish <module-key>
@@ -210,35 +236,29 @@ git diff
 git status
 ```
 
-必须同步更新任务文件，然后只 `git add` 明确需要提交的文件。结束汇报至少包含：
-
-- 本轮改了什么；
-- 结果/图/代码的准确路径；
-- 剩余待办；
-- 阻塞项；
-- 需要复核项。
+同步更新任务文件，只 `git add` 明确需要提交的文件。结束汇报至少包含本轮修改、结果/图/代码准确路径、剩余待办、阻塞和需要复核项。
 
 ---
 
-# 可直接复制给 AI 的规范提示词
+# 可直接复制给有仓库权限 AI 的规范提示词
 
 ```text
 你正在 CUMCM 模块化 Git 仓库中工作，本次模块是 <模块key>，任务是：<本次任务>。
-
-开始任何修改前必须：
-1. 完整阅读当前提供的《AI 单文件交接说明与规范提示词》。如果仓库可访问，再读 AGENTS.md、README.md、docs/RESOURCE_MAP.md、docs/PAPER_STYLE_GUIDE.md。
-2. 运行 `python scripts/workflow.py start <模块key>`，读取当前分支、允许路径、固定资源位置和实时待办。
-3. 读取并持续维护 `work/tasks/<模块key>.md`。新增任务、阻塞、风险、完成项、需要复核项必须实时写回，不只留在聊天里。
-4. 遇到“不知道文件在哪里”时先查固定资源地图、config/project.json和模块目录，不向队友重复询问已经固定的路径。
-5. 只修改当前模块责任域。跨模块问题记录依赖，不直接覆盖别的章节。
-6. 正式数值必须能追溯到当前代码/结果文件；不得从旧稿、截图、范文或历史JSON手抄覆盖。
-7. 需要人工判断的内容统一标记 NEEDS_REVIEW/需要复核，由管理员或指定复核成员处理，不绑定某个固定角色。
-8. 沿用仓库既定论文格式；非 paper-shell 任务不得重定义字体、页边距、标题、目录或全局图表样式。
-9. 不得 force push、reset --hard，不得创建第二套全文TeX或随意汇总目录。
-
-结束前必须：
-1. 更新实时待办；
-2. 运行 `python scripts/workflow.py finish <模块key>`；
-3. 检查 git diff，确认无责任域外修改；
-4. 汇报本轮修改、准确文件路径、剩余待办、阻塞和需要复核项。
+开始任何修改前完整阅读 AGENTS.md、README.md、docs/RESOURCE_MAP.md、docs/PAPER_STYLE_GUIDE.md，并运行 `python scripts/workflow.py start <模块key>`。
+围绕 `work/tasks/<模块key>.md` 的实时待办推进，新任务/阻塞/风险/完成项/需要复核项实时写回。
+只修改当前模块责任域；固定路径以 config/project.json 和资源地图为准，不创造 src/final2/第二套全文等并行真源。
+当前结果状态只认当前模块 results/registry.csv；历史 archive/import 中的 FROZEN/CHECKED 不得继承。正文关键数值必须来自当前 FROZEN + CHECKED。
+非 paper-shell 任务不得重定义论文公共格式；需要人工判断统一标记 NEEDS_REVIEW。
+禁止 force push/reset-hard。
+结束前更新待办，运行 `python scripts/workflow.py finish <模块key>`，检查 git diff，并汇报修改、准确路径、剩余待办和需要复核项。
 ```
+
+# 给普通聊天 AI 的最简入口
+
+先由仓库协作者生成：
+
+```bash
+python scripts/export_handoff.py <module-key> --format md
+```
+
+然后只需要把生成的 `output/handoff/<module-key>_handoff.md` 发给 AI，并说明本轮任务。AI 应优先服从文件顶部的 `HANDOFF_MANIFEST` 和 `CURRENT STATE`。

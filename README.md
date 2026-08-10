@@ -86,7 +86,7 @@ modules/30_q2/
 └─ results/registry.csv
 ```
 
-问题一另提供 `paper/q1_algorithm.tex` 作为伪代码格式示例。跨两个及以上问题共用的数值内核进入 `shared/`，不要复制多份。
+问题一另提供 `paper/q1_algorithm.tex` 作为伪代码格式示例。跨两个及以上问题共用的数值内核进入 `shared/`，不要复制多份。不要自行创造 `src/` 或并行结果目录。
 
 ## 5. 分支规则
 
@@ -163,7 +163,9 @@ NEEDS_REVIEW / 需要复核
 
 另有 `review_state`：`NEEDS_REVIEW` / `CHECKED`。
 
-正文关键数值应来自 `FROZEN + CHECKED`。模型或代码改变且影响结果后，受影响结果重新回到 `DRAFT`。
+正文关键数值应来自当前项目的 `FROZEN + CHECKED`。模型或代码改变且影响结果后，受影响结果重新回到 `DRAFT`。
+
+**历史仓库或 `work/archive/` 中的 `FROZEN/CHECKED` 不得继承到当前项目。** 当前结果状态只认当前模块自己的 `results/registry.csv`。
 
 ## 9. 临时全文 Merge Preview
 
@@ -208,46 +210,105 @@ python scripts/preview_merge.py --clean
 
 详见 `docs/PAPER_STYLE_GUIDE.md`。格式调整只在 `feature/paper-shell` 完成。
 
-## 11. 给队友 AI 的单文件说明
+## 11. 给普通聊天 AI 的自动交接
 
-如果队友使用的 AI 不能自动读取仓库规则，直接把下面这个文件单独发给它：
+队友使用普通 ChatGPT、DeepSeek 等，不能自动读取完整 Git 仓库时，优先使用：
 
-```text
-docs/AI_HANDOFF_PROMPT.md
+```bash
+python scripts/export_handoff.py q2
 ```
 
-该文件自身包含：
+默认生成：
 
-- 固定资源路径；
-- 分支/责任域；
-- 实时待办要求；
-- 结果状态；
-- 论文版式核心规范；
-- 图表尺寸；
-- 开工/收工命令；
-- 可直接复制使用的规范提示词。
+```text
+output/handoff/q2_handoff.md
+output/handoff/q2_handoff.zip
+```
 
-支持仓库级指令的 AI 还会读取根目录 `AGENTS.md` 和 `.github/copilot-instructions.md`。
+只要单文件 Markdown：
 
-## 12. AI 规范提示词
+```bash
+python scripts/export_handoff.py q2 --format md
+```
 
-简化入口：
+只要 ZIP：
+
+```bash
+python scripts/export_handoff.py q2 --format zip
+```
+
+需要附带当前只读参考，例如共享代码：
+
+```bash
+python scripts/export_handoff.py q2 --reference shared/code
+```
+
+需要迁移旧工程时，把旧资料先放进 `work/archive/`，再显式标记为 legacy：
+
+```bash
+python scripts/export_handoff.py q2 \
+  --legacy work/archive/imports/s2_snapshot
+```
+
+导出包会自动区分：
+
+```text
+CURRENT             当前正式模块与实时待办
+REFERENCE           当前只读参考
+LEGACY_NOT_CURRENT  历史迁移材料
+```
+
+并在 `HANDOFF.md` 顶部生成 `HANDOFF_MANIFEST`，明确当前 canonical root、当前 registry 行数和状态、允许写入路径、legacy 路径等。默认不会把历史 registry 原文直接交给普通 AI，而是生成去身份化冲突摘要，避免旧 `FROZEN` 被误认成当前状态。
+
+只有专门审计历史 registry 时才使用：
+
+```bash
+python scripts/export_handoff.py q2 \
+  --legacy work/archive/imports/s2_snapshot \
+  --include-legacy-registries
+```
+
+生成的 `output/handoff/` 默认被 Git 忽略，只是临时携带快照，不是新的正式真源。
+
+如果不使用自动导出器，至少把 `docs/AI_HANDOFF_PROMPT.md` 单独发给 AI。
+
+## 12. 仓库级 AI 与普通 AI 的区别
+
+支持仓库级指令的 AI/Codex：
+
+```text
+读 AGENTS.md / README / RESOURCE_MAP / PAPER_STYLE_GUIDE
+→ workflow.py start <key>
+→ 在责任域内实际修改
+→ 实时更新 work/tasks/<key>.md
+→ workflow.py finish <key>
+```
+
+普通聊天 AI 没有仓库执行权限时：
+
+- 不应声称自己已经运行 Git/Python/LaTeX；
+- 不应声称已经真正修改仓库；
+- 应给出准确仓库相对路径、替换文本/修改建议和 `NEEDS_REVIEW` 项；
+- 由协作者落盘。
+
+简化的仓库级提示词：
 
 ```text
 你正在 CUMCM 模块化 Git 仓库中工作，本次模块是 <模块key>，任务是：<任务>。
 开始前完整阅读 AGENTS.md、README.md、docs/RESOURCE_MAP.md、docs/PAPER_STYLE_GUIDE.md，并运行 `python scripts/workflow.py start <模块key>`。
 必须围绕 `work/tasks/<模块key>.md` 的实时待办推进，新任务/阻塞/需要复核项实时写回任务文件。
 固定资源路径先自行查询，不要求队友重复提供。
-只修改当前模块责任域；正式数值必须可追溯到当前代码/结果文件；非 paper-shell 任务不得重定义论文公共格式；需要人工判断统一标记 NEEDS_REVIEW；禁止 force push/reset-hard/第二套全文TeX。
+只修改当前模块责任域；当前结果状态只认当前模块 results/registry.csv，历史状态不得继承；非 paper-shell 任务不得重定义论文公共格式；需要人工判断统一标记 NEEDS_REVIEW；禁止 force push/reset-hard/第二套全文TeX。
 结束前更新待办，运行 `python scripts/workflow.py finish <模块key>`，检查 git diff，并汇报修改、准确路径、剩余待办和需要复核项。
 ```
 
-更完整版本直接使用 `docs/AI_HANDOFF_PROMPT.md`。
+更完整版本见 `docs/AI_HANDOFF_PROMPT.md`。
 
 ## 13. 检查层级
 
 1. `scripts/structure_guard.py`：仓库结构、责任域和第二套全文源；
 2. `scripts/final_preflight.py`：引用、标签、结果状态、LaTeX日志；
-3. 人工检查：模型合理性、结果解释、图表视觉、论文表达。
+3. `scripts/export_handoff.py`：对普通 AI 显式隔离当前状态、只读参考和历史材料；
+4. 人工检查：模型合理性、结果解释、图表视觉、论文表达。
 
 机器检查防止灾难性错误，不替代人工判断。
