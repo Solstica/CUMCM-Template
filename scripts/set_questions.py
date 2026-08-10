@@ -12,7 +12,7 @@ MAIN = ROOT / "paper/main.tex"
 
 
 def update_main_tex(text: str, questions: int) -> str:
-    """Enable q1..qN and comment out the remaining canonical question inputs.
+    r"""Enable q1..qN and comment out the remaining canonical question inputs.
 
     Deliberately avoids re.sub replacement strings containing LaTeX backslashes,
     which can be interpreted as regex replacement escapes (for example \input).
