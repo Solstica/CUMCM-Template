@@ -25,7 +25,8 @@
 
 - 问题一伪代码格式：`modules/20_q1/paper/q1_algorithm.tex`
 - 论文完整格式规范：`docs/PAPER_STYLE_GUIDE.md`
-- 可单独交给队友 AI 的说明：`docs/AI_HANDOFF_PROMPT.md`
+- 普通 AI 交接规则：`docs/AI_HANDOFF_PROMPT.md`
+- 普通 AI 交接导出器：`scripts/export_handoff.py`
 
 ## 数据与产物
 
@@ -38,7 +39,47 @@
 - 结果状态：对应问题 `results/registry.csv`。
 - 最终提交物：`output/final/`。
 - 可再生临时产物：`output/build/`。
-- 旧模型/旧图/废弃路线：`work/archive/`，活动脚本与正文不得引用。
+- 普通 AI 临时交接包：`output/handoff/`，由 `scripts/export_handoff.py` 生成，默认不提交 Git。
+- 旧模型/旧图/废弃路线：`work/archive/`，只读归档；活动脚本与正式正文不得引用。
+
+## 问题模块固定子目录
+
+问题模块只使用以下既定结构，不自行创造 `src/`、`final/`、`old2/` 等并行位置：
+
+```text
+modules/<q>/paper/
+modules/<q>/code/
+modules/<q>/data/processed/
+modules/<q>/figures/
+modules/<q>/figures/editable/
+modules/<q>/tables/
+modules/<q>/results/registry.csv
+```
+
+## 历史资料与普通 AI 交接
+
+历史资料即使位于导入快照中、文件更完整、旧 registry 标记过 `FROZEN`，也不能替代当前模块真源。当前状态只认当前模块自己的 `results/registry.csv`。
+
+普通聊天 AI 不直接读 Git 仓库时，优先使用：
+
+```bash
+python scripts/export_handoff.py q2 --format md
+python scripts/export_handoff.py q2 --format zip
+```
+
+需要附加当前只读参考（例如共享代码）：
+
+```bash
+python scripts/export_handoff.py q2 --reference shared/code
+```
+
+需要附加历史迁移材料：
+
+```bash
+python scripts/export_handoff.py q2 --legacy work/archive/imports/<snapshot>
+```
+
+导出器会把 `CURRENT`、`REFERENCE`、`LEGACY_NOT_CURRENT` 分层，并默认不把历史 registry 原文直接塞给普通 AI，而是生成去身份化冲突摘要，避免把旧 `FROZEN` 误认成当前状态。
 
 ## 公共格式资源
 
