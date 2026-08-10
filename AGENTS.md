@@ -4,19 +4,26 @@
 
 ## 开始任务前
 
-1. 先读 `README.md`、`docs/RESOURCE_MAP.md`、`config/modules.json`。
-2. 必须运行 `python scripts/workflow.py start <module-key>`。
-3. 必须读取当前模块 `work/tasks/<module-key>.md`，以其中实时待办为工作入口。
-4. 文件位置只以资源地图和配置为准；先自行查找固定路径，不要求协作者重复说明已经固定的资源位置。
+1. 阅读 `README.md`、`docs/RESOURCE_MAP.md`、`docs/PAPER_STYLE_GUIDE.md`、`config/project.json`。
+2. 如需要完整单文件交接，读取 `docs/AI_HANDOFF_PROMPT.md`。
+3. 必须运行 `python scripts/workflow.py start <module-key>`。
+4. 必须读取当前模块 `work/tasks/<module-key>.md`，以其中实时待办为工作入口。
+5. 文件位置只以资源地图和配置为准；先自行查找固定路径，不要求协作者重复说明已经固定的资源位置。
 
 ## 修改边界
 
 - 一个任务只修改一个责任域。
 - 当前模块唯一正文源位于其 `modules/.../paper/`。
-- `paper/` 仅由 `feature/paper-shell` 修改；章节分支不得编辑全文入口。
+- `paper/` 仅由 `feature/paper-shell` 修改；章节分支不得编辑全文入口、字体、页边距、标题层级、目录和公共图表样式。
 - 跨问共享内核只进入 `shared/`，由 `feature/shared` 维护。
 - 不新建第二套全文 TeX、第二套模块树或 `final2/真的final/论文汇总` 等目录。
 - 不使用 `git push --force`、`git reset --hard` 处理协作冲突。
+
+## 论文格式
+
+- 默认沿用 `docs/PAPER_STYLE_GUIDE.md`，不要自行重新设计。
+- 图表、表格、公式、伪代码、代码附录均使用仓库既有示例和宏。
+- 非 `paper-shell` 任务若发现公共格式问题，只记录依赖/需要复核项，不直接改全局样式。
 
 ## 待办与检查
 
@@ -29,4 +36,4 @@
 1. 更新当前模块任务文件；
 2. 运行 `python scripts/workflow.py finish <module-key>`；
 3. 检查 `git diff` 与越界修改；
-4. 汇报修改、结果位置、未完成待办、需要复核项。
+4. 汇报修改、结果位置、未完成待办、阻塞和需要复核项。
