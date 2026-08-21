@@ -21,12 +21,16 @@
 | shared | 跨问共享代码/接口 | — | `shared/` | `work/tasks/shared.md` | `feature/shared` |
 | paper-shell | 标题、目录、页码、公共样式 | `paper/main.tex` | `paper/preamble.tex`、`paper/settings.tex`、`paper/title.tex` | `work/tasks/paper-shell.md` | `feature/paper-shell` |
 
-### 特殊示例文件
+### 特殊规则与工具
 
 - 问题一伪代码格式：`modules/20_q1/paper/q1_algorithm.tex`
 - 论文完整格式规范：`docs/PAPER_STYLE_GUIDE.md`
+- 终稿检查表：`docs/FINAL_PAPER_CHECKLIST.md`
+- 多场训练赛操作经验：`docs/WORKFLOW_LESSONS.md`
 - 普通 AI 交接规则：`docs/AI_HANDOFF_PROMPT.md`
 - 普通 AI 交接导出器：`scripts/export_handoff.py`
+- 临时分支状态检查：`scripts/branch_hygiene.py`
+- 全文预览：`scripts/preview_latest.sh`、`scripts/preview_fast.py`、`scripts/preview_merge.py`
 
 ## 数据与产物
 
@@ -55,6 +59,8 @@ modules/<q>/figures/editable/
 modules/<q>/tables/
 modules/<q>/results/registry.csv
 ```
+
+`paper/` 目录内只保留 canonical 正文及明确拆分的伪代码文件。不要新建 `q2_final.tex`、`references_final15.tex`、`q3_v2.tex` 等平行正文源；旧稿进入 `work/archive/`。
 
 ## 历史资料与普通 AI 交接
 
@@ -93,3 +99,11 @@ paper/title.tex      论文标题文字
 ```
 
 章节分支如果遇到公共排版问题，应在任务文件记录依赖，不直接在自己的 TeX 中重定义全局格式。
+
+## 临时维护分支
+
+`chore/*` 不是长期责任分支。集中维护完成后若采用 squash merge，旧 chore 分支会与 `main` 历史分叉，应核对后删除，不要再次 merge。检查命令：
+
+```bash
+python scripts/branch_hygiene.py
+```
