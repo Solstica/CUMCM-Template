@@ -1,12 +1,20 @@
 {
   "project_name": "CUMCM-Template",
   "default_base": "main",
+  "integration": {
+    "base_branch": "feature/paper-shell",
+    "skip_module_keys": ["paper-shell"]
+  },
   "modules": [
     {
       "key": "shared",
       "branch": "feature/shared",
       "path": "shared",
       "task": "work/tasks/shared.md",
+      "extra_paths": [
+        "scripts/",
+        "config/project.json"
+      ],
       "active": true,
       "merge_order": 5
     },
