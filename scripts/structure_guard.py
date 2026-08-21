@@ -14,8 +14,12 @@ REQUIRED = {
     "paper/settings.tex",
     "paper/title.tex",
     "docs/PAPER_STYLE_GUIDE.md",
+    "docs/FINAL_PAPER_CHECKLIST.md",
     "docs/AI_HANDOFF_PROMPT.md",
     "scripts/export_handoff.py",
+    "scripts/preview_merge.py",
+    "scripts/preview_fast.py",
+    "scripts/preview_latest.sh",
     "modules/20_q1/paper/q1_algorithm.tex",
 }
 for m in CFG["modules"]:
