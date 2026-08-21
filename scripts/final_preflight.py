@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, csv, re
+
+import argparse
+import csv
+import re
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+CONFLICT_MARKERS = ("<<<<<<<", "=======", ">>>>>>>")
 
 
 def tex_files():
@@ -15,6 +19,14 @@ def read(path: Path):
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def prose_length(text: str) -> int:
+    text = re.sub(r"%.*", "", text)
+    text = re.sub(r"\\(?:textbf|emph|mathrm|operatorname)\{([^{}]*)\}", r"\1", text)
+    text = re.sub(r"\\[A-Za-z@]+\*?(?:\[[^\]]*\])?", "", text)
+    text = re.sub(r"[$\\{}_^~]", "", text)
+    return len(re.sub(r"\s+", "", text))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--post-build", action="store_true")
@@ -23,6 +35,7 @@ def main():
     errors = []
     warns = []
     labels = defaultdict(list)
+    all_tex = {}
 
     module_tex = list((ROOT / "modules").glob("*/paper/*.tex"))
     forbidden_global_style = (
@@ -35,14 +48,31 @@ def main():
 
     for p in tex_files():
         t = read(p)
+        all_tex[p] = t
+        for marker in CONFLICT_MARKERS:
+            if marker in t:
+                errors.append(f"{p.relative_to(ROOT)}: 残留 Git 冲突标记 {marker}")
         for token in ("??", "[?]", "TODO", "FIXME"):
             if token in t:
                 warns.append(f"{p.relative_to(ROOT)}: 发现 {token}")
         for x in re.findall(r"\\label\{([^}]+)\}", t):
             labels[x].append(p)
 
+        # 竞赛正文中过长的纯文字段落通常意味着信息没有被公式、分点或图表组织。
+        if "modules/80_appendix" not in str(p).replace("\\", "/"):
+            for idx, para in enumerate(re.split(r"\n\s*\n", t), 1):
+                if any(x in para for x in ("\\begin{equation", "\\begin{align", "\\begin{figure", "\\begin{table", "\\begin{algorithm", "\\begin{lstlisting")):
+                    continue
+                if para.lstrip().startswith(("\\section", "\\subsection", "\\subsubsection", "%")):
+                    continue
+                n = prose_length(para)
+                if n >= 260:
+                    warns.append(
+                        f"{p.relative_to(ROOT)}: 第 {idx} 个文字段约 {n} 字，建议分点/分段或用公式组织"
+                    )
+
     for p in module_tex:
-        t = read(p)
+        t = all_tex[p]
         for token in forbidden_global_style:
             if token in t:
                 errors.append(f"{p.relative_to(ROOT)}: 章节正文不得重定义公共样式 {token}")
@@ -50,6 +80,15 @@ def main():
     for k, ps in labels.items():
         if len(ps) > 1:
             errors.append(f"重复 label {k}: " + ", ".join(str(p.relative_to(ROOT)) for p in ps))
+
+    # 图表放入正文后必须至少有一次文字引用，避免“孤立图表”。
+    joined = "\n".join(all_tex.values())
+    for label, ps in labels.items():
+        if not (label.startswith("fig:") or label.startswith("tab:")):
+            continue
+        refs = len(re.findall(rf"\\(?:ref|autoref)\{{{re.escape(label)}\}}", joined))
+        if refs == 0:
+            warns.append(f"{ps[0].relative_to(ROOT)}: {label} 未被正文引用或解释")
 
     for reg in ROOT.glob("modules/*/results/registry.csv"):
         with reg.open(encoding="utf-8", newline="") as f:
@@ -98,7 +137,7 @@ def main():
             log_text = read(log)
             if "Overfull \\hbox" in log_text:
                 warns.append("LaTeX 日志存在 Overfull \\hbox")
-            if "undefined references" in log_text.lower() or "citation" in log_text.lower() and "undefined" in log_text.lower():
+            if "undefined references" in log_text.lower() or ("citation" in log_text.lower() and "undefined" in log_text.lower()):
                 errors.append("LaTeX 日志存在未解析引用或文献引用")
 
     for w in dict.fromkeys(warns):
