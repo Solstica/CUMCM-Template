@@ -121,6 +121,7 @@
       "task": "work/tasks/paper-shell.md",
       "extra_paths": [
         "docs/PAPER_STYLE_GUIDE.md",
+        "docs/FINAL_PAPER_CHECKLIST.md",
         "docs/AI_HANDOFF_PROMPT.md"
       ],
       "active": true,
