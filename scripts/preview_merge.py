@@ -181,6 +181,30 @@ def build(preview: Path, no_build: bool) -> None:
         print("[WARN] 未找到 latexmk/xelatex，仅完成临时拼装。")
 
 
+def prepare_preview_path(preview: Path) -> None:
+    """Recycle only an old preview created by this script; never delete an arbitrary directory."""
+    exists = preview.exists()
+    is_registered = registered(preview)
+    if not exists and not is_registered:
+        return
+
+    marker = preview / MARKER
+    if exists and marker.exists():
+        print(f"[INFO] 回收上次失败遗留的 preview：{preview}")
+        clean_preview(preview)
+        return
+
+    if not exists and is_registered:
+        print(f"[INFO] 清理已失效的 preview worktree 注册：{preview}")
+        clean_preview(preview)
+        return
+
+    raise SystemExit(
+        f"目标 preview 路径已存在但没有 {MARKER} 标记：{preview}\n"
+        "为避免误删普通工作目录，本脚本拒绝自动清理；请人工确认后换路径或删除。"
+    )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--clean", action="store_true")
@@ -202,8 +226,7 @@ def main() -> None:
         raise SystemExit("当前位于 preview worktree，请回到正常 worktree。")
 
     run(["git", "fetch", "origin", "--prune"])
-    if preview.exists() or registered(preview):
-        raise SystemExit(f"已存在 preview：{preview}\n先运行 python scripts/preview_merge.py --clean")
+    prepare_preview_path(preview)
 
     integ = integration_cfg()
     compose_base = a.base_branch or integ.get("base_branch") or CFG.get("default_base", "main")

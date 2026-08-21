@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, json, subprocess
+
+import argparse
+import json
+import re
+import subprocess
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -8,6 +12,10 @@ CFG = json.loads((ROOT / "config/project.json").read_text(encoding="utf-8"))
 ALLOWED_ROOT = {".github", "config", "data", "docs", "modules", "output", "paper", "scripts", "shared", "work"}
 FORBIDDEN_DIR = {"final_paper", "paper_final", "full_paper", "论文汇总", "总论文", "最终论文", "真的final"}
 FORBIDDEN_TEX = {"document.tex", "final.tex", "final_paper.tex", "paper_final.tex", "full_paper.tex", "总论文.tex", "最终论文.tex"}
+PAPER_VARIANT_RE = re.compile(
+    r"(?:^|[_-])(?:final\d*|v\d+|old\d*|backup\d*|copy\d*|副本)(?:[_-]|\.)",
+    re.IGNORECASE,
+)
 REQUIRED = {
     "paper/main.tex",
     "paper/preamble.tex",
@@ -15,8 +23,10 @@ REQUIRED = {
     "paper/title.tex",
     "docs/PAPER_STYLE_GUIDE.md",
     "docs/FINAL_PAPER_CHECKLIST.md",
+    "docs/WORKFLOW_LESSONS.md",
     "docs/AI_HANDOFF_PROMPT.md",
     "scripts/export_handoff.py",
+    "scripts/branch_hygiene.py",
     "scripts/preview_merge.py",
     "scripts/preview_fast.py",
     "scripts/preview_latest.sh",
@@ -82,6 +92,9 @@ def main():
             errors.append(f"禁止第二套全文目录: {f}")
         if p.name.lower() in {x.lower() for x in FORBIDDEN_TEX}:
             errors.append(f"禁止第二套全文 TeX: {f}")
+        if len(parts) >= 4 and parts[0] == "modules" and parts[2] == "paper" and p.suffix.lower() == ".tex":
+            if PAPER_VARIANT_RE.search(p.name):
+                errors.append(f"禁止平行 final/v2/old/backup 正文源: {f}")
 
     mod = next((m for m in CFG["modules"] if m["branch"] == a.branch), None)
     if mod:
@@ -93,6 +106,14 @@ def main():
     for r in REQUIRED:
         if r not in tree:
             errors.append(f"canonical source 缺失: {r}")
+
+    # 即使不是本次新增，只要目标树仍残留平行正文源，也在集成前阻止。
+    for f in tree:
+        p = PurePosixPath(f)
+        parts = p.parts
+        if len(parts) >= 4 and parts[0] == "modules" and parts[2] == "paper" and p.suffix.lower() == ".tex":
+            if PAPER_VARIANT_RE.search(p.name):
+                errors.append(f"目标树残留平行正文源: {f}")
 
     if errors:
         print("STRUCTURE GUARD FAILED")

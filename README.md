@@ -1,8 +1,8 @@
-# CUMCM 通用协作与论文模板 v1.1
+# CUMCM 通用协作与论文模板 v1.2
 
 面向数学建模竞赛的三人/多人 + AI 协作模板。模板包含团队多场训练赛中实际使用并修正过的**标题、摘要、目录、正文标题层级、字体、页边距、行距、公式、三线表、插图尺寸、伪代码、代码附录、评价、参考文献和 AI 使用报告样式**，同时提供模块化 Git 协作、结果登记和临时全文预览。
 
-核心原则：**单一真源、章节独立、固定路径、任务可见、结果可追溯、格式统一、责任域临时集成、稳定版本再进入 main。**
+核心原则：**单一真源、章节独立、固定路径、任务可见、结果可追溯、格式统一、责任域临时集成、稳定版本再进入 main。** 多场训练赛形成的操作经验另见 `docs/WORKFLOW_LESSONS.md`。
 
 ## 1. 新比赛开局
 
@@ -88,6 +88,8 @@ modules/30_q2/
 
 问题一另提供 `paper/q1_algorithm.tex` 作为伪代码格式示例。跨两个及以上问题共用的数值内核进入 `shared/`，不要复制多份。不要自行创造 `src/` 或并行结果目录。
 
+`paper/` 中只保留唯一正文源及明确拆出的算法文件。不要新建 `q2_final.tex`、`references_final15.tex`、`q3_v2.tex` 等平行真源；旧稿移入 `work/archive/`。
+
 ## 5. 分支规则
 
 长期活动分支按责任域，不按人名：
@@ -111,6 +113,14 @@ main
 ```
 
 `main` 只保存稳定版本。不要创建 `feature/张三`、`final2`、`真的final` 或第二套 `document.tex`。
+
+`chore/*` 只用于一次集中维护或迁移。若通过 squash merge 进入 `main`，旧 chore 分支通常会显示与 `main` 双向分叉；这并不表示还应再次 merge。先运行：
+
+```bash
+python scripts/branch_hygiene.py
+```
+
+确认综合提交已覆盖需要保留的内容后删除旧 chore 分支；下一轮维护从最新 `main` 新建新的 chore 分支。
 
 ## 6. 每次开工/收工
 
@@ -169,13 +179,13 @@ NEEDS_REVIEW / 需要复核
 
 ## 9. 临时全文 Preview：责任域 Overlay，不做临时 Merge
 
-最近一场训练赛暴露出：多个长期 feature 分支历史交叉后，用 `git merge` 临时拼全文会产生大量与正文无关的冲突；失败的 worktree 还可能阻塞下一次预览。因此模板改为：
+多次训练赛已经证明：多个长期 feature 分支历史交叉后，用 `git merge` 临时拼全文会产生大量与正文无关的冲突；失败的 worktree 还可能阻塞下一次预览。因此模板采用：
 
 ```text
 feature/paper-shell 作为排版底座
 → 对每个责任分支先做越界审计
 → 只把该责任域的 canonical 文件 overlay 到临时 worktree
-→ 检查冲突标记、空白、引用和结果状态
+→ 检查冲突标记、空白、引用、资源路径和结果状态
 → XeLaTeX/latexmk 编译
 ```
 
@@ -198,7 +208,9 @@ git fetch origin --prune
 bash <(git show origin/feature/shared:scripts/preview_latest.sh)
 ```
 
-它会自动清理上次失败遗留的 controller/preview worktree，并始终使用远端 `feature/shared` 上最新的预览脚本。临时预览不会修改或合并任何正式 feature 分支。
+它会自动清理上次失败遗留的 controller/preview worktree，并始终使用远端 `feature/shared` 上最新的预览脚本。`preview_merge.py` 也会自动回收带模板 marker 的旧 preview，但不会删除普通目录。临时预览不会修改或合并任何正式 feature 分支。
+
+若编译失败，优先处理日志中的**第一处硬错误**。第一遍 citation/reference warning 在编译被缺图、TeX 拼写或其他错误提前打断时，不等于最终引用失败。
 
 ## 10. 论文公共格式
 
@@ -221,7 +233,7 @@ bash <(git show origin/feature/shared:scripts/preview_latest.sh)
 
 ## 11. 终稿文字检查
 
-最近一次训练赛新增的统一要求：
+最近几次训练赛形成的统一要求：
 
 - “问题描述/预备工作/算法介绍”不要出现连续五六行以上的纯文字块；按逻辑分点，必要时用定义公式承载信息；
 - 模型/算法第一次出现采用“中文名称（英文全称，缩写）”；
@@ -229,9 +241,10 @@ bash <(git show origin/feature/shared:scripts/preview_latest.sh)
 - 模型汇总直接给数学模型，不用“目标函数直接写为”等口语引导；
 - 算法说明至少给出一个核心排序/更新/定价公式，再接伪代码；
 - 每张图表必须被正文引用并解释，图表与文字重复时删其一；
-- 摘要只加粗模型、算法和关键结论，不整句加粗。
+- 摘要只加粗模型、算法和关键结论，不整句加粗；
+- 有界可行候选不能写成全局最优；跨问绝对指标在时间范围或终端结算未统一前不要直接解释成增量收益。
 
-完整检查表见 `docs/FINAL_PAPER_CHECKLIST.md`。`final_preflight.py` 会额外检查 Git 冲突标记、过长纯文字段落和未被正文引用的图表标签。
+完整检查表见 `docs/FINAL_PAPER_CHECKLIST.md`。`final_preflight.py` 会额外检查 Git 冲突标记、可疑 TeX 拼写、缺失资源、平行正文源、过长纯文字段落和未被正文引用的图表标签。
 
 ## 12. 代码附录按提交规则二选一
 
@@ -294,7 +307,7 @@ LEGACY_NOT_CURRENT  历史迁移材料
 支持仓库级指令的 AI/Codex：
 
 ```text
-读 AGENTS.md / README / RESOURCE_MAP / PAPER_STYLE_GUIDE / FINAL_PAPER_CHECKLIST
+读 AGENTS.md / README / RESOURCE_MAP / PAPER_STYLE_GUIDE / FINAL_PAPER_CHECKLIST / WORKFLOW_LESSONS
 → workflow.py start <key>
 → 在责任域内实际修改
 → 实时更新 work/tasks/<key>.md
@@ -310,10 +323,11 @@ LEGACY_NOT_CURRENT  历史迁移材料
 
 ## 15. 检查层级
 
-1. `scripts/structure_guard.py`：仓库结构、责任域、必要预览资源和第二套全文源；
-2. `scripts/final_preflight.py`：冲突标记、过长文字段、图表引用、结果状态、LaTeX日志；
+1. `scripts/structure_guard.py`：仓库结构、责任域、canonical 正文源和第二套全文源；
+2. `scripts/final_preflight.py`：冲突标记、可疑 TeX、资源路径、过长文字段、图表引用、结果状态和 LaTeX 日志；
 3. `scripts/preview_fast.py` / `preview_latest.sh`：责任域 overlay 后的全文临时集成；
-4. `scripts/export_handoff.py`：对普通 AI 隔离当前状态、只读参考和历史材料；
-5. 人工检查：模型合理性、结果解释、图表视觉、论文表达和分页。
+4. `scripts/branch_hygiene.py`：识别 squash 后遗留或仍有独立提交的临时 chore 分支；
+5. `scripts/export_handoff.py`：对普通 AI 隔离当前状态、只读参考和历史材料；
+6. 人工检查：模型合理性、结果解释、跨问可比性、图表视觉、论文表达和分页。
 
 机器检查防止灾难性错误，不替代人工判断。
