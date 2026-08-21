@@ -1,12 +1,20 @@
 {
   "project_name": "CUMCM-Template",
   "default_base": "main",
+  "integration": {
+    "base_branch": "feature/paper-shell",
+    "skip_module_keys": ["paper-shell"]
+  },
   "modules": [
     {
       "key": "shared",
       "branch": "feature/shared",
       "path": "shared",
       "task": "work/tasks/shared.md",
+      "extra_paths": [
+        "scripts/",
+        "config/project.json"
+      ],
       "active": true,
       "merge_order": 5
     },
@@ -113,6 +121,7 @@
       "task": "work/tasks/paper-shell.md",
       "extra_paths": [
         "docs/PAPER_STYLE_GUIDE.md",
+        "docs/FINAL_PAPER_CHECKLIST.md",
         "docs/AI_HANDOFF_PROMPT.md"
       ],
       "active": true,

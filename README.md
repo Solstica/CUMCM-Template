@@ -1,8 +1,8 @@
-# CUMCM 通用协作与论文模板 v1
+# CUMCM 通用协作与论文模板 v1.1
 
-面向数学建模竞赛的三人/多人 + AI 协作模板。它不只提供 Git 分支和 worktree，也已经包含团队上一场正式论文验证过的**标题、摘要、目录、正文标题层级、字体、页边距、行距、公式、三线表、插图尺寸、伪代码、代码附录、评价、参考文献和 AI 使用报告样式**。
+面向数学建模竞赛的三人/多人 + AI 协作模板。模板包含团队多场训练赛中实际使用并修正过的**标题、摘要、目录、正文标题层级、字体、页边距、行距、公式、三线表、插图尺寸、伪代码、代码附录、评价、参考文献和 AI 使用报告样式**，同时提供模块化 Git 协作、结果登记和临时全文预览。
 
-核心原则：**单一真源、章节独立、固定路径、任务可见、结果可追溯、格式统一、全文临时集成、稳定版本再进入 main。**
+核心原则：**单一真源、章节独立、固定路径、任务可见、结果可追溯、格式统一、责任域临时集成、稳定版本再进入 main。**
 
 ## 1. 新比赛开局
 
@@ -18,7 +18,7 @@ git push
 python scripts/bootstrap_worktrees.py --push
 ```
 
-模板默认按三问展示；如赛题为1--4问，使用 `set_questions.py` 调整。
+模板默认按三问展示；如赛题为 1--4 问，使用 `set_questions.py` 调整。
 
 ## 2. 直接编译模板看格式
 
@@ -45,7 +45,7 @@ latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex
 % \showtocfalse
 ```
 
-完整论文格式规范：`docs/PAPER_STYLE_GUIDE.md`。
+完整论文格式规范见 `docs/PAPER_STYLE_GUIDE.md`；终稿前必须再过一遍 `docs/FINAL_PAPER_CHECKLIST.md`。
 
 ## 3. 永久固定的资源路径
 
@@ -63,7 +63,7 @@ latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex
 | 参考文献 | `modules/70_references/` | `feature/references` |
 | 附录 | `modules/80_appendix/` | `feature/appendix` |
 | AI使用报告 | `modules/90_ai_report/` | `feature/ai-report` |
-| 跨问共享代码 | `shared/` | `feature/shared` |
+| 跨问共享代码/预览脚本 | `shared/`、`scripts/` | `feature/shared` |
 | 标题/目录/页码/公共样式 | `paper/` | `feature/paper-shell` |
 | 官方原始附件 | `data/raw/` | 不随章节移动 |
 | 外部补充数据 | `data/external/` | 不随章节移动 |
@@ -167,50 +167,79 @@ NEEDS_REVIEW / 需要复核
 
 **历史仓库或 `work/archive/` 中的 `FROZEN/CHECKED` 不得继承到当前项目。** 当前结果状态只认当前模块自己的 `results/registry.csv`。
 
-## 9. 临时全文 Merge Preview
+## 9. 临时全文 Preview：责任域 Overlay，不做临时 Merge
+
+最近一场训练赛暴露出：多个长期 feature 分支历史交叉后，用 `git merge` 临时拼全文会产生大量与正文无关的冲突；失败的 worktree 还可能阻塞下一次预览。因此模板改为：
+
+```text
+feature/paper-shell 作为排版底座
+→ 对每个责任分支先做越界审计
+→ 只把该责任域的 canonical 文件 overlay 到临时 worktree
+→ 检查冲突标记、空白、引用和结果状态
+→ XeLaTeX/latexmk 编译
+```
+
+普通入口：
 
 ```bash
 python scripts/preview_merge.py
 ```
 
-流程：
-
-```text
-fetch origin
-→ origin/main 创建 detached 临时 worktree
-→ 按配置 merge 各活动章节分支
-→ paper-shell 最后合入
-→ final_preflight
-→ XeLaTeX/latexmk 编译
-→ 打开 PDF
-```
-
-它不会生成长期汇总分支，也不会修改正式 feature 分支或 main。
-
-清理：
+快速纸面预览：
 
 ```bash
-python scripts/preview_merge.py --clean
+python scripts/preview_fast.py
 ```
+
+最推荐的一键方式是在稳定仓库根目录运行：
+
+```bash
+git fetch origin --prune
+bash <(git show origin/feature/shared:scripts/preview_latest.sh)
+```
+
+它会自动清理上次失败遗留的 controller/preview worktree，并始终使用远端 `feature/shared` 上最新的预览脚本。临时预览不会修改或合并任何正式 feature 分支。
 
 ## 10. 论文公共格式
 
 除非比赛官方要求发生变化，默认不重新设计：
 
-- A4，四边25 mm；
+- A4，四边 25 mm；
 - 中文正文 Windows 优先宋体，英文/数字优先 Times New Roman；
-- 正文小四、段首2字符、1.38行距基准；
+- 正文小四、段首 2 字符、1.38 行距基准；
 - 题目三号加粗居中；
 - 一级标题中文序号居中；二级 `4.1`；三级 `4.1.1`；
-- 三线表 + 浅蓝表头；
-- 单小图0.44正文宽，双图总宽0.88，Origin合成双面板整张0.88，流程图约1.0，机理图通常0.70；
+- 摘要标题与论文题目紧凑，摘要标题到正文略放开，各问之间保留小段距；
+- 三线表 + 浅蓝表头；符号表额外增加少量行高；
+- 单图 `0.44\textwidth`，双图总宽 `0.88\textwidth`，Origin 合成双面板整张 `0.88\textwidth`，流程图约 `1.0\textwidth`，机理图通常 `0.70\textwidth`；
 - `algorithm2e` 伪代码；
+- 参考文献默认 `\footnotesize`，约 15 条时优先争取一页排完；
 - 参考文献、附录、AI使用报告各自另起一页；
-- 正文从问题重述开始第1页。
+- 正文从问题重述开始第 1 页。
 
-详见 `docs/PAPER_STYLE_GUIDE.md`。格式调整只在 `feature/paper-shell` 完成。
+详见 `docs/PAPER_STYLE_GUIDE.md` 和 `docs/FINAL_PAPER_CHECKLIST.md`。格式调整只在 `feature/paper-shell` 完成。
 
-## 11. 给普通聊天 AI 的自动交接
+## 11. 终稿文字检查
+
+最近一次训练赛新增的统一要求：
+
+- “问题描述/预备工作/算法介绍”不要出现连续五六行以上的纯文字块；按逻辑分点，必要时用定义公式承载信息；
+- 模型/算法第一次出现采用“中文名称（英文全称，缩写）”；
+- 不把“物理口径、证据边界、统一链路、柔性释放/替代”等内部讨论语言写进正式正文；
+- 模型汇总直接给数学模型，不用“目标函数直接写为”等口语引导；
+- 算法说明至少给出一个核心排序/更新/定价公式，再接伪代码；
+- 每张图表必须被正文引用并解释，图表与文字重复时删其一；
+- 摘要只加粗模型、算法和关键结论，不整句加粗。
+
+完整检查表见 `docs/FINAL_PAPER_CHECKLIST.md`。`final_preflight.py` 会额外检查 Git 冲突标记、过长纯文字段落和未被正文引用的图表标签。
+
+## 12. 代码附录按提交规则二选一
+
+若比赛另交源码：附录列“文件 + 功能”，正文只放必要核心片段。
+
+若比赛**只交 PDF 且代码页不计正文页数**：用 `\lstinputlisting` 直接收入每问最终核心代码，不手工复制，以保证 PDF 与正式代码真源一致。模板 `modules/80_appendix/paper/appendix.tex` 已给两种模式。
+
+## 13. 给普通聊天 AI 的自动交接
 
 队友使用普通 ChatGPT、DeepSeek 等，不能自动读取完整 Git 仓库时，优先使用：
 
@@ -260,24 +289,12 @@ LEGACY_NOT_CURRENT  历史迁移材料
 
 并在 `HANDOFF.md` 顶部生成 `HANDOFF_MANIFEST`，明确当前 canonical root、当前 registry 行数和状态、允许写入路径、legacy 路径等。默认不会把历史 registry 原文直接交给普通 AI，而是生成去身份化冲突摘要，避免旧 `FROZEN` 被误认成当前状态。
 
-只有专门审计历史 registry 时才使用：
-
-```bash
-python scripts/export_handoff.py q2 \
-  --legacy work/archive/imports/s2_snapshot \
-  --include-legacy-registries
-```
-
-生成的 `output/handoff/` 默认被 Git 忽略，只是临时携带快照，不是新的正式真源。
-
-如果不使用自动导出器，至少把 `docs/AI_HANDOFF_PROMPT.md` 单独发给 AI。
-
-## 12. 仓库级 AI 与普通 AI 的区别
+## 14. 仓库级 AI 与普通 AI 的区别
 
 支持仓库级指令的 AI/Codex：
 
 ```text
-读 AGENTS.md / README / RESOURCE_MAP / PAPER_STYLE_GUIDE
+读 AGENTS.md / README / RESOURCE_MAP / PAPER_STYLE_GUIDE / FINAL_PAPER_CHECKLIST
 → workflow.py start <key>
 → 在责任域内实际修改
 → 实时更新 work/tasks/<key>.md
@@ -291,24 +308,12 @@ python scripts/export_handoff.py q2 \
 - 应给出准确仓库相对路径、替换文本/修改建议和 `NEEDS_REVIEW` 项；
 - 由协作者落盘。
 
-简化的仓库级提示词：
+## 15. 检查层级
 
-```text
-你正在 CUMCM 模块化 Git 仓库中工作，本次模块是 <模块key>，任务是：<任务>。
-开始前完整阅读 AGENTS.md、README.md、docs/RESOURCE_MAP.md、docs/PAPER_STYLE_GUIDE.md，并运行 `python scripts/workflow.py start <模块key>`。
-必须围绕 `work/tasks/<模块key>.md` 的实时待办推进，新任务/阻塞/需要复核项实时写回任务文件。
-固定资源路径先自行查询，不要求队友重复提供。
-只修改当前模块责任域；当前结果状态只认当前模块 results/registry.csv，历史状态不得继承；非 paper-shell 任务不得重定义论文公共格式；需要人工判断统一标记 NEEDS_REVIEW；禁止 force push/reset-hard/第二套全文TeX。
-结束前更新待办，运行 `python scripts/workflow.py finish <模块key>`，检查 git diff，并汇报修改、准确路径、剩余待办和需要复核项。
-```
-
-更完整版本见 `docs/AI_HANDOFF_PROMPT.md`。
-
-## 13. 检查层级
-
-1. `scripts/structure_guard.py`：仓库结构、责任域和第二套全文源；
-2. `scripts/final_preflight.py`：引用、标签、结果状态、LaTeX日志；
-3. `scripts/export_handoff.py`：对普通 AI 显式隔离当前状态、只读参考和历史材料；
-4. 人工检查：模型合理性、结果解释、图表视觉、论文表达。
+1. `scripts/structure_guard.py`：仓库结构、责任域、必要预览资源和第二套全文源；
+2. `scripts/final_preflight.py`：冲突标记、过长文字段、图表引用、结果状态、LaTeX日志；
+3. `scripts/preview_fast.py` / `preview_latest.sh`：责任域 overlay 后的全文临时集成；
+4. `scripts/export_handoff.py`：对普通 AI 隔离当前状态、只读参考和历史材料；
+5. 人工检查：模型合理性、结果解释、图表视觉、论文表达和分页。
 
 机器检查防止灾难性错误，不替代人工判断。
