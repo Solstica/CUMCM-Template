@@ -75,7 +75,20 @@ def resolve_project_path(raw: str, kind: str) -> Path | None:
     return p
 
 
+def strip_literal_environments(text: str) -> str:
+    """Remove literal code examples so commands shown as text are not treated as active TeX."""
+    for env in ("lstlisting", "verbatim", "Verbatim"):
+        text = re.sub(
+            rf"\\begin\{{{env}\}}.*?\\end\{{{env}\}}",
+            "",
+            text,
+            flags=re.S,
+        )
+    return text
+
+
 def project_assets(text: str):
+    text = strip_literal_environments(text)
     patterns = (
         ("graphics", re.compile(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}", re.S)),
         ("listing", re.compile(r"\\lstinputlisting(?:\[[^\]]*\])?\{([^}]+)\}", re.S)),
@@ -160,7 +173,7 @@ def main() -> None:
                 if n >= 200:
                     warns.append(f"{rel}: 第 {idx} 个文字段约 {n} 字，建议分点/分段或用公式组织")
 
-        # 对明确写成 \ProjectRoot/... 的资源做静态存在性检查，提前拦截路径拼错。
+        # 对明确写成 \ProjectRoot/... 的活动资源做静态存在性检查，提前拦截路径拼错。
         for kind, raw in project_assets(t):
             target = resolve_project_path(raw, kind)
             if target is not None and not target.exists():
